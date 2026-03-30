@@ -1,0 +1,116 @@
+#==============================================================================
+# FINANCIAL DATA SCIENCE .gitignore
+# Last Updated: January 2026
+# Purpose: Protect sensitive data, credentials, and maintain clean repos
+#==============================================================================
+
+#------------------------------------------------------------------------------
+# SECURITY & CREDENTIALS - NEVER COMMIT THESE
+#------------------------------------------------------------------------------
+# Environment variables and secrets
+.env
+.env.local
+.env.*.local
+*.secret
+secrets.yml
+credentials.json
+config/local.yml
+config/secrets.yml
+
+# API Keys and service credentials
+*_api_key*
+*_secret_key*
+*.pem
+*.key
+*.cert
+.aws/
+.azure/
+
+# Database connection strings
+*connection_string*
+database.yml
+db_config.json
+
+# SSH keys (should never be in project directories)
+id_rsa*
+*.pub
+
+#------------------------------------------------------------------------------
+# R-SPECIFIC FILES
+#------------------------------------------------------------------------------
+# History files
+.Rhistory
+.Rapp.history
+
+# Session Data files
+.RData
+.RDataTmp
+
+# User-specific files
+.Ruserdata
+.Rproj.user/
+
+# RStudio project files (optional - some teams track these)
+# *.Rproj
+
+# OAuth tokens
+.httr-oauth
+.httr-oauth2
+
+# knitr and R markdown default cache directories
+*_cache/
+/cache/
+*_files/
+
+# Temporary R files
+*.Rout
+*.Rcheck/
+
+# pkgdown site
+docs/
+doc/
+Meta/
+
+# Translation temp files
+po/*~
+
+
+#------------------------------------------------------------------------------
+# PYTHON-SPECIFIC FILES
+#------------------------------------------------------------------------------
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+pipenv/
+.virtualenv/
+
+#------------------------------------------------------------------------------
+# LOGS & TEMPORARY FILES
+#------------------------------------------------------------------------------
+# Log files
+*.log
+logs/**
+*.out
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+*~
+Thumbs.db
+
+#------------------------------------------------------------------------------
+# macOS SYSTEM FILES
+#------------------------------------------------------------------------------
+# macOS metadata files
+.DS_Store
+.AppleDouble
+.LSOverride

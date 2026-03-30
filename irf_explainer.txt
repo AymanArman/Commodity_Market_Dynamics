@@ -1,0 +1,190 @@
+IMPULSE RESPONSE FUNCTIONS (IRFs) — COMPLETE EXPLAINER
+========================================================
+
+WHAT IS AN IRF?
+---------------
+An Impulse Response Function shows how a variable (the "responder") reacts over time
+to a sudden shock in another variable (the "impulse"). In the context of this app:
+
+- The impulse is a one standard deviation shock to commodity A (e.g. WTI crude, CL)
+- The responders are all other commodities (e.g. BRN, NG, ALI...)
+- The X axis is time in trading days following the shock (e.g. day 0 to day 30)
+- The Y axis is the magnitude of the response, expressed in standard deviations
+- A confidence band (typically 95%) surrounds the response line
+
+The IRF does not show what actually happened on any specific date. It shows the
+average expected response pattern based on the historical relationship between
+the two series, as estimated by the VAR model.
+
+
+WHERE DOES THE IRF COME FROM?
+------------------------------
+The VAR (Vector Autoregression) model estimates how each commodity's current value
+depends on its own past values AND the past values of all other commodities in the
+system. Once the model is fitted, you simulate: "what if commodity A received a
+shock of one standard deviation on day 0 — holding everything else equal — and
+we let the system evolve forward?" The resulting trajectory for each other commodity
+is the IRF.
+
+Orthogonalised IRFs (Cholesky decomposition) are the standard approach. They assign
+causal ordering to the variables, meaning the ordering of tickers in the VAR matters.
+Generalised IRFs (Pesaran & Shin) are order-invariant and often preferred for
+commodity markets where no strict causal ordering is theoretically justified.
+
+
+READING THE CHART — PATTERN BY PATTERN
+----------------------------------------
+
+1. STRONG POSITIVE RELATIONSHIP
+   - Response line rises sharply above zero immediately after day 0
+   - Stays above the upper confidence band for several days
+   - Gradually decays back toward zero as the shock dissipates
+   - Colour: green (outside confidence band)
+   - Interpretation: a positive shock in A reliably leads to a positive move in B
+   - Example you might expect: CL shock → positive BRN response (both crude benchmarks)
+
+2. STRONG NEGATIVE RELATIONSHIP
+   - Response line drops sharply below zero after day 0
+   - Stays below the lower confidence band for several days
+   - Decays back toward zero
+   - Colour: green (outside confidence band, but on the downside)
+   - Interpretation: a positive shock in A reliably leads to a negative move in B
+   - This is less common in commodity markets but can occur with substitution effects
+
+3. DELAYED RESPONSE
+   - Response line stays near zero for the first few days
+   - Departs significantly from zero at day 3, 5, or later
+   - Confidence band crossed only after the delay
+   - Colour: grey early, transitions to green later
+   - Interpretation: B does not react immediately to a shock in A — there is a
+     transmission lag. This is economically meaningful — it tells you how many
+     days it takes for the shock to propagate.
+   - Example: a crude shock might take 2-3 days to show up in refined products
+
+4. NO RELATIONSHIP
+   - Response line hovers near zero throughout the entire horizon
+   - Confidence band straddles zero at every point
+   - Line may wiggle slightly due to noise but never departs meaningfully
+   - Colour: grey throughout
+   - Interpretation: no statistically meaningful predictive relationship exists
+     between A and B at any horizon. The model is not forcing a relationship.
+   - Example you might expect: CL shock → ALI response (weak or absent channel)
+
+5. TRANSIENT RELATIONSHIP (SHORT-LIVED SHOCK)
+   - Response line departs from zero and crosses the confidence band on days 1-3
+   - Returns inside the confidence band by day 5-7
+   - Colour: green briefly, then grey
+   - Interpretation: B reacts to a shock in A but the effect dissipates quickly.
+     The market absorbs the shock and returns to normal rapidly.
+   - Economically: the two markets are linked but the transmission is not persistent
+
+6. PERSISTENT RELATIONSHIP (LONG-LIVED SHOCK)
+   - Response line departs from zero and stays outside the confidence band for
+     10, 15, or 20+ days
+   - May not fully decay back to zero within the horizon shown
+   - Colour: green for a sustained period
+   - Interpretation: a shock in A has a lasting effect on B. The markets are
+     structurally linked and the effect does not dissipate quickly.
+   - This raises questions about whether the series are cointegrated (share a
+     long-run equilibrium), which is a separate but related analysis
+
+7. OSCILLATING RESPONSE
+   - Response line alternates above and below zero across the horizon
+   - May cross the confidence band on both sides at different points
+   - Colour: alternates green/grey
+   - Interpretation: a shock in A causes B to overshoot and correct repeatedly.
+     Can indicate feedback loops or mean-reverting dynamics.
+   - Rare but worth flagging if observed — may suggest model misspecification
+     or a genuine cyclical transmission mechanism
+
+8. INITIAL SPIKE THEN REVERSAL
+   - Response line spikes sharply positive (or negative) on day 1-2
+   - Then reverses direction and moves the other way before decaying
+   - Colour: green initially, may cross to the other side
+   - Interpretation: the immediate reaction is in one direction but the market
+     corrects. Could reflect overreaction and mean reversion, or a delayed
+     supply/demand adjustment.
+
+9. ASYMMETRIC CONFIDENCE BANDS
+   - One side of the confidence band is much wider than the other
+   - Interpretation: the model is more certain about the response in one direction
+     than the other. High uncertainty in the upside, for example, means positive
+     responses are hard to predict precisely even if the central estimate suggests one.
+
+
+CONFIDENCE BANDS — WHAT THEY ARE AND WHY THEY MATTER
+------------------------------------------------------
+The confidence band (shaded region around the response line) represents statistical
+uncertainty in the estimated IRF. It is typically constructed via bootstrap simulation
+— the VAR model is re-estimated many times on resampled data, and the spread of
+resulting IRFs gives you the band.
+
+- Narrow band: the model is confident in the estimated response path
+- Wide band: high uncertainty — the true response could vary substantially
+- Band crossing zero: the response is not statistically distinguishable from zero
+  at that horizon
+
+A response line outside the band but with a very wide band should be interpreted
+cautiously — the relationship exists but is imprecisely estimated.
+
+
+COMMON PITFALLS IN INTERPRETATION
+-----------------------------------
+1. Granger causality ≠ true causation. A predicts B does not mean A causes B.
+   A third variable may drive both.
+
+2. The VAR is estimated on historical data. If the structural relationship between
+   commodities has changed (e.g. post-shale revolution in US energy markets),
+   the IRF reflects the average over the full sample, which may be misleading.
+
+3. Ordering matters for orthogonalised IRFs. If generalised IRFs are not used,
+   the results depend on which commodity is placed first in the VAR. This should
+   be handled carefully and disclosed.
+
+4. Stationarity assumption. The VAR is estimated on returns (stationary), not
+   price levels (non-stationary). IRFs therefore describe return dynamics, not
+   price level dynamics.
+
+5. The shock is symmetric by default. A +1 SD shock and a -1 SD shock produce
+   mirror-image responses in a linear VAR. Real commodity markets often have
+   asymmetric responses (e.g. price spikes vs. price drops behave differently).
+   This is a known limitation of linear VAR.
+
+
+WHAT TO TELL A RISK MANAGER LOOKING AT THESE CHARTS
+-----------------------------------------------------
+- Green = this relationship is real and statistically meaningful at this horizon
+- Grey = no reliable signal; do not trade or hedge on this relationship
+- The X axis tells you the speed of transmission — early green means fast propagation
+- The Y axis tells you the magnitude — how large is the expected response relative
+  to the size of the initial shock
+- A persistent green signal means you may need to hedge the responding commodity
+  when the impulse commodity moves, not just the impulse commodity itself
+
+
+GLOSSARY
+--------
+VAR — Vector Autoregression. A multivariate time series model where each variable
+      is regressed on its own lags and the lags of all other variables.
+
+Granger Causality — A statistical test of whether past values of X improve the
+                    prediction of Y beyond Y's own history. If yes, X Granger-causes Y.
+
+IRF — Impulse Response Function. The dynamic response of one variable to a shock
+      in another, traced out over a defined time horizon.
+
+Orthogonalised IRF — IRF computed after decomposing shocks so they are uncorrelated,
+                     using a Cholesky factorisation. Order-dependent.
+
+Generalised IRF — IRF that is invariant to variable ordering. Preferred when no
+                  strict theoretical ordering exists.
+
+Confidence Band — The uncertainty interval around the estimated IRF, typically
+                  constructed via bootstrap.
+
+AIC — Akaike Information Criterion. Used to select the optimal lag length in the VAR.
+      Balances model fit against complexity.
+
+Standard Deviation Shock — The size of the impulse. One SD is the typical unit —
+                            it scales the shock to be comparable across commodities
+                            regardless of their price levels or units.

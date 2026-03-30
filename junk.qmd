@@ -1,0 +1,29 @@
+---
+title: "Junk"
+format: html
+editor: visual
+---
+
+## 
+
+```{r}
+library(RTL)
+library(tidyverse)
+library(skimr)
+
+```
+
+```{r}
+
+df <- RTL::dflong
+
+
+
+
+```
+
+```{r}
+
+df %>% 
+  dplyr::filter(series == )
+```
