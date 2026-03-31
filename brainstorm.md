@@ -5,6 +5,22 @@
 
 ---
 
+## Educational Design Philosophy
+
+- Each page serves as an educational guide — not a tool for a seasoned professional
+- Concepts progress from simple to complex both **within each page** and **across pages**
+- Page ordering reflects this: simpler concepts first, more statistically complex later
+  1. Forward Curves
+  2. Volatility
+  3. Market Dynamics
+  4. Cross-Market Relationships
+  5. Hedging Analytics
+- No definitions for basic concepts — assume financial literacy and preliminary stats knowledge
+- Narrative text is **fixed** and written at a conceptual level — applicable across tickers and regimes, not specific to any one scenario
+- Interactive/mutable charts **are** the worked examples — user explores and draws conclusions themselves
+
+---
+
 ## Baseline Requirements (per assignment brief)
 
 **Audience framing:** User is a Risk or Trading Manager with limited experience in the markets they now have accountability for. The app is the tool to tell the story — to themselves, their team, and stakeholders.
@@ -34,6 +50,30 @@
 **Data loading**
 - `dflong` loaded once in `app_server.R` — never reloaded by child modules
 - Filtered/sliced reactives passed down as arguments
+**Commodity tickers in `dflong`**
+- `CL` — WTI Crude
+- `BRN` — Brent Crude
+- `HTT` — WTI Houston (Argus) vs. WTI Trade Month differential
+- `HO` — Heating Oil
+- `RB` — RBOB Gasoline
+- `NG` — Henry Hub Natural Gas
+- `ALI` — Aluminium
+- `EDP` — Aluminium European Premium Duty-Paid
+- `MJP` — Aluminum Japan Premium
+- `AUP` — Gold
+
+**Commodity groups**
+- Infrastructure supports named groups of tickers — extensible to any grouping
+- Three group buttons, each with a distinct analytical story:
+  - **Crude** (`CL`, `BRN`, `HTT`) — WTI/Brent spread and Houston differential; crack spread story against refined products
+  - **Refined Products** (`HO`, `RB`) — refinery margin story; crack spreads against crude benchmark
+  - **Aluminium** (`ALI`, `EDP`, `MJP`) — base metal + regional premiums (Europe vs Japan); regional premium spread dynamics
+- `NG` and `AUP` are standalone — no group button warranted
+- Group buttons anchored to specific panels that support group-level analysis
+- Clicking a group button replaces current ticker selection with the group's tickers — modal confirmation shown before applying
+- Pressing the same active group button again does nothing
+- User exits group view by clicking another group button or manually changing the ticker selector — no locking
+- Group buttons trigger group-specific panels to appear; non-applicable panels hide
 
 **Module structure**
 - **Core module** — combines analysis across tickers; owns cross-market comparisons and any global controls (e.g. shared date range, ticker selector)
@@ -72,12 +112,17 @@
 - Regime classification smoothed to avoid flickering from short-lived switches
 - Built in plotly
 
+**Panel 3 — Slope & regime analytics**
+
+**Panel 4 — PCA decomposition**
+- Forward curves of different commodities broken apart into their most significant principal components to display the characteristic moves of each market (level, slope, curvature)
+- Reveals how each commodity's curve deforms distinctively
+- PCA plots chart PC loadings against tenors
+- Computed lazily per commodity on first selection, cached in `r$[ticker]_pca`
+
 **Additional forward curve analytics (to be scoped in planning)**
-- Curve shape / regime classification timeline
-- Slope & curvature metrics over time (M1-M2, M1-M12 spreads)
 - Historical snapshot overlays — user selects specific dates to compare
 - Roll yield → moved to hedging analytics page (tentative, how it fits TBD)
-- PCA decomposition → moved to variance page (tentative pending further study — professor has a module on this)
 
 ---
 
@@ -89,8 +134,13 @@
 - Tenor range filter dynamically generated from available tenors for that ticker (varies by commodity)
 - Colors via viridis or similar
 
+**Panel 2 — Correlation matrix heatmap (per ticker)**
+- Normalized covariance matrix displayed as a heatmap — tenors on both axes, color scale [-1, 1]
+- Serves as an educational bridge between variance and forward curve structure — the heatmap makes visible how uncertainty is shared across the term structure and connects directly to why the forward curve moves the way it does
+- Narrative framing: high front-tenor correlation = parallel shifts dominate; correlation decay toward back tenors = slope and curvature dynamics emerging; this is the covariance structure that PCA decomposes on the forward curves page
+
 **Tentative**
-- PCA decomposition (level, slope, curvature) — pending further study
+- PCA on returns across tenors (distinct from forward curve PCA — volatility decomposition rather than curve shape decomposition)
 
 ---
 
@@ -98,7 +148,14 @@
 
 **Core goal:** Communicate the impact of price changes in one commodity on others — accurately, efficiently, and readably for a risk manager audience.
 
-**Chosen methodology: VAR + Granger Causality with Impulse Response Functions (IRFs)**
+**Panel 1 — Rolling correlation with volatility regime shading**
+- Two-commodity selector (limited to two tickers for readability)
+- Rolling correlation line between front month returns of the two selected commodities
+- Background shaded by volatility regime (high/low vol periods) — data-driven, not manually tagged events
+- Narrative: shows whether cross-market relationships strengthen or break down during stress periods
+- Simpler concept than IRF — intentionally placed first as the entry point to cross-market thinking
+
+**Panel 2 — VAR + Granger Causality with Impulse Response Functions (IRFs)**
 - One VAR model fitted across all tickers simultaneously using front month (M1) returns only
 - Front month only: most liquid, most representative, avoids sparse data in back months
 - Optimal lag selected automatically via AIC — removes subjectivity
@@ -130,6 +187,53 @@
 - Present as "predictive relationships" not "causes" — statistically honest and still actionable
 - Economic reasoning (e.g. oil prices affect aluminium smelting costs) surfaced as narrative context alongside the charts
 - Caveat surfaced explicitly alongside IRF charts: VAR is calibrated on historical return innovations — unprecedented shocks or structural regime changes (e.g. pre/post shale revolution, COVID) mean historical relationships may not hold going forward
+
+---
+
+## Market Dynamics Page
+
+**Concept:** A commodity class primer — each group button loads a completely different experience with its own narrative, analytics, and layout. Shared elements are only the page container and group buttons.
+
+**Group buttons:** Crude | Refined Products | Natural Gas | Production Metals | Gold
+
+**Narrative:** Static, high-level, written per commodity class — not regime-aware. Explains the dominant dynamics of each market at a conceptual level.
+
+---
+
+**Crude** (`CL`, `BRN`, `HTT`)
+- Seasonal price patterns by month
+- Cushing inventory cycles (RTL `cushing` dataset available)
+- Calendar spread behavior over the year (M1-M2, M1-M3)
+- WTI/Brent spread dynamics
+- Houston differential behavior (HTT)
+
+**Refined Products** (`HO`, `RB`)
+- Seasonal demand patterns — heating oil winter peak, gasoline summer peak
+- Crack spread behavior over the calendar year
+- Spread between HO and RB across seasons
+
+**Natural Gas** (`NG`)
+- Storage injection/withdrawal cycle (summer inject, winter withdraw)
+- Strong seasonal patterns in monthly returns
+- Winter premium in forward curve
+- EIA storage data if accessible (RTL `eiaStocks` dataset — to confirm if NG is included)
+
+**Production Metals** (`ALI`, `EDP`, `MJP`)
+- Regional premium spread seasonality (Europe vs Japan)
+- Industrial cycle patterns derivable from price behavior
+- EDP vs MJP spread over time
+- ⚠ Thin without external PMI data — analytics limited to price-derived patterns
+
+**Gold** (`AUP`)
+- Real rates relationship (external data available)
+- Safe-haven behavior — price spikes during geopolitical/economic stress periods
+- ⚠ Seasonal story is weak for gold — real rates is the stronger narrative here
+
+---
+
+## Hedging Analytics Page
+
+*Not yet discussed — to be brainstormed in a future session.*
 
 ---
 

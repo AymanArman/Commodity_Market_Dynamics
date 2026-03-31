@@ -1,0 +1,340 @@
+PCA — From First Principles
+===========================
+Context: forward curve decomposition for commodity markets
+Written as a study reference following a working session on PCA intuition.
+
+
+---
+1. WHAT IS PCA DOING?
+---
+
+PCA looks at a dataset across many observations and asks: what are the recurring
+modes of movement in this data, and how much of the total variance does each explain?
+
+For forward curves specifically:
+- Each observation is one date
+- Each variable is one tenor (M1 through M12)
+- Each date's forward curve is a point in 12-dimensional space
+- Across the full dataset, those points form a cloud in that space
+
+PCA finds the natural axes of that cloud — the directions in which the data
+spreads most. Those axes are the principal components.
+
+The result: instead of describing a curve as 12 correlated prices, you describe
+it as a small number of independent modes of movement. In commodity curves,
+the first 3 PCs typically explain 95%+ of total variance. The 12-tenor curve
+is genuinely low-dimensional in practice.
+
+
+---
+2. THE DATA STRUCTURE
+---
+
+You feed PCA a matrix where:
+- Rows = dates (observations)
+- Columns = tenors M1 to M12 (variables)
+
+Each row is one curve snapshot. PCA finds structure across all rows simultaneously.
+
+
+---
+3. THE COVARIANCE MATRIX
+---
+
+Before finding PCs, PCA builds a covariance matrix C.
+
+C is 12x12. Each cell C[i,j] is the covariance between tenor i and tenor j across
+all dates — how much those two tenors tend to move together.
+
+- High positive C[i,j]: tenors i and j move in the same direction most of the time
+- Near-zero C[i,j]: tenors i and j move independently
+- Negative C[i,j]: tenors i and j tend to move in opposite directions
+
+The covariance matrix encodes the full co-movement structure of the curve.
+This is what PCA decomposes.
+
+
+---
+4. THE EIGENVECTOR EQUATION
+---
+
+The core of PCA is finding the eigenvectors of C. The equation is:
+
+    Cv = λv
+
+Where:
+- C is the 12x12 covariance matrix
+- v is a 12x1 vector (a direction in tenor-space) — this is the eigenvector
+- λ is a scalar — this is the eigenvalue
+
+What this equation means geometrically:
+
+When you multiply a matrix by a vector, you transform that vector — stretching
+it, rotating it, or both. For most directions v, Cv comes back pointing somewhere
+different. The covariance structure has rotated it.
+
+An eigenvector is a special direction that survives this transformation unchanged.
+Cv returns the exact same direction as v, just scaled by λ. The covariance matrix
+can stretch or shrink it, but cannot rotate it.
+
+Those special directions are the natural axes of the data's variance structure.
+
+
+---
+5. MATRIX-VECTOR MULTIPLICATION
+---
+
+For a 3x3 example: C is 3x3, v is 3x1, output Cv is 3x1.
+
+Each element of the output is computed as a dot product:
+
+    output[1] = C[1,1]·v[1] + C[1,2]·v[2] + C[1,3]·v[3]
+    output[2] = C[2,1]·v[1] + C[2,2]·v[2] + C[2,3]·v[3]
+    output[3] = C[3,1]·v[1] + C[3,2]·v[2] + C[3,3]·v[3]
+
+Each row of C dot-producted with v produces one number. 12 rows produce a 12x1
+output vector. The output is v transformed by the covariance structure.
+
+
+---
+6. A WORKED EXAMPLE OF DIRECTION CHANGE VS PRESERVATION
+---
+
+C = [[3, 1], [1, 3]]
+
+Try v = [1, 0] (pointing purely along M1):
+    output[1] = 3·1 + 1·0 = 3
+    output[2] = 1·1 + 3·0 = 1
+    Result = [3, 1] — direction changed, M2 now has a component
+
+Try v = [1, 1] (pointing equally along M1 and M2):
+    output[1] = 3·1 + 1·1 = 4
+    output[2] = 1·1 + 3·1 = 4
+    Result = [4, 4] = 4 · [1, 1] — same direction, scaled by 4
+
+[1, 1] is an eigenvector with eigenvalue λ = 4.
+The covariance matrix could only stretch it, not rotate it.
+
+
+---
+7. EIGENVALUES
+---
+
+λ is the scalar that satisfies Cv = λv for a given eigenvector v.
+
+In PCA:
+- Each PC has one eigenvalue
+- λ represents the amount of variance in the dataset explained by that PC
+- Proportion of variance explained = λ / sum(all λ)
+- PCs are ranked largest λ to smallest — PC1 always explains the most
+
+The eigenvalue also describes the geometry: it is the "length" of that axis of
+the data ellipsoid. A large λ means the cloud is highly elongated in that direction
+(that mode of movement is common and large). A small λ means the cloud is nearly
+flat in that direction (that mode barely exists in the data).
+
+Eigenvalue drop-off in commodity forward curves is typically steep:
+- PC1: ~80-90% of variance
+- PC2: ~5-10%
+- PC3: ~2-5%
+- PC4 onward: noise
+
+This steep drop-off reflects that forward curve tenors are highly correlated —
+the curve is genuinely low-dimensional despite having 12 variables.
+
+
+---
+8. HOW MULTIPLE EIGENVECTORS COME FROM ONE MATRIX
+---
+
+A 12x12 matrix has exactly 12 eigenvectors — one per dimension.
+
+They are found sequentially with an orthogonality constraint:
+- PC1: find v1 maximizing λ1 subject to no constraints
+- PC2: find v2 maximizing λ2 subject to v2 ⊥ v1 (perpendicular to PC1)
+- PC3: find v3 maximizing λ3 subject to v3 ⊥ v1 and v3 ⊥ v2
+- ...and so on
+
+The orthogonality constraint ensures each PC captures genuinely new variance —
+none already explained by previous PCs. This is what makes PCA scores
+uncorrelated with each other.
+
+The covariance matrix C never changes. You are extracting its 12 natural
+directions one at a time, each time in the subspace not yet claimed.
+
+In practice, all 12 eigenvectors are found simultaneously via eigendecomposition:
+
+    C = V Λ V^T
+
+Where V is the matrix of all eigenvectors (columns) and Λ is a diagonal matrix
+of eigenvalues. This is a closed-form algebraic factorization, not iterative search.
+In R, prcomp() handles this in one call.
+
+
+---
+9. LOADINGS
+---
+
+The loadings are the eigenvectors — specifically, the φ coefficients in the
+linear combination that defines each PC:
+
+    pc_k = φ_k1·M1 + φ_k2·M2 + ... + φ_k12·M12
+
+The loading for tenor j on PC k is φ_kj. It is the weight of that tenor in
+that PC's linear combination. It is fixed for the entire dataset — it does not
+change per observation.
+
+The loading chart plots these φ values (y-axis) against tenor number (x-axis).
+The shape that emerges (flat, rising, U-shaped) reflects the co-movement
+structure of the data. The shape is not mathematically imposed — it falls out
+of the covariance structure naturally.
+
+A loading near zero for a tenor on a given PC means:
+- That tenor contributes almost nothing to that mode of movement
+- When that PC fires, that tenor barely moves
+- This traces back to the covariance: that tenor's covariance with the dominant
+  direction of movement is near zero, or its positive and negative covariances
+  with other tenors cancel out in the dot product
+
+Important: the loading chart shape is a product of plotting φ values against
+tenor order. The same eigenvector plotted against a different x-axis would look
+completely different. Tenor order is the right choice for forward curves because
+it surfaces economically meaningful patterns.
+
+
+---
+10. THE THREE STANDARD PC SHAPES IN COMMODITY CURVES
+---
+
+PC1 — Level (parallel shift)
+- Loading chart: roughly flat across all tenors
+- All tenors load similarly and positively
+- When PC1 score moves, the entire curve shifts up or down together
+- Driven by macro price level shocks
+- Typically explains 80-90% of total variance
+
+PC2 — Slope (twist)
+- Loading chart: rising or falling from front to back (may or may not cross zero)
+- If loadings stay positive but rise toward back: back tenors amplify more than front
+  during slope changes — steepening/flattening, not a true inversion
+- If loadings cross zero (negative front, positive back): front and back move in
+  opposite directions — a true twist
+- Encodes contango/backwardation dynamics
+- PC2 score is a continuous slope indicator: positive = one regime, negative = other
+
+PC3 — Curvature (butterfly)
+- Loading chart: U-shaped or hump-shaped
+- Front and back tenors load one way, belly tenors load the other
+- When PC3 fires, the middle of the curve moves against the wings
+- Often tied to seasonal storage dynamics affecting mid-tenor contracts
+
+
+---
+11. SCORES
+---
+
+Scores are date-specific. On any given date, the curve is projected onto each
+eigenvector to produce a score:
+
+    score_k(date) = φ_k1·M1(date) + φ_k2·M2(date) + ... + φ_k12·M12(date)
+
+The score tells you how much of PC_k was present on that date.
+
+Loadings are fixed (property of the full dataset).
+Scores change every date (property of each individual observation).
+
+The analogy to regression: loadings are like β (fixed coefficients), scores are
+like fitted values (one per observation).
+
+Using scores you can:
+- Plot PC1 score vs PC2 score over time → a map of curve regimes; clusters are
+  periods of similar curve behavior, transitions are regime changes
+- Track PC2 score alone → a continuous contango/backwardation indicator
+- Animate reconstructed curves → use scores × loadings to rebuild the curve at
+  each date and watch it deform through time
+
+
+---
+12. THE VAGUE SECTION — TRACING PC SHAPE BACK TO THE COVARIANCE MATRIX
+---
+
+This is the part that is harder to backtrace intuitively.
+
+The question is: why does the covariance structure of commodity forward curves
+produce a flat PC1, a rising PC2, and a U-shaped PC3?
+
+Start with PC1. In commodity curves, all tenors are highly positively correlated
+with each other. C[i,j] is large and positive for almost every pair (i,j).
+When the eigenvector equation finds the direction of maximum variance, it finds
+that the direction where all φ values are equal (or near-equal) is the one that
+accumulates the most covariance — because every pair of tenors is pulling in the
+same direction. Hence PC1 is flat.
+
+For PC2, after removing the parallel shift direction, the remaining variance
+lives in slope changes. In most commodity curves the back end has more
+sensitivity to structural long-term forces (supply investment cycles, demand
+shifts) while the front is more sensitive to near-term supply shocks — but the
+specific shape (rising vs falling) depends on which end dominates slope variance
+in the actual dataset. The eigenvector solution finds the direction in the
+residual space that maximizes remaining variance, and it comes out as the
+loading shape that best captures how slope changes actually occurred in the data.
+
+For PC3, after removing level and slope, what remains is curvature — moves where
+the belly behaves differently from the wings. Storage constraints, seasonal
+demand patterns, and calendar spread dynamics tend to affect mid-tenor contracts
+differently from the front and back. The covariance between belly tenors and
+wing tenors is lower (or negative) relative to wing-wing covariance, which means
+the PC3 eigenvector solution assigns opposite-sign loadings to belly vs wings.
+
+The core principle: the loading shape is determined by which linear combination
+of tenors captures the most variance in the data, given the constraint of
+orthogonality to all previous PCs. You cannot read the shape off the covariance
+matrix by inspection — the eigendecomposition does the work. But you can reason
+approximately: tenors that are strongly correlated with each other will tend to
+have similar loadings on the same PC, and tenors whose covariances partially
+cancel will have near-zero loadings on that PC.
+
+
+---
+13. PCA VS REGRESSION — THE KEY DISTINCTION
+---
+
+Both involve linear combinations and φ/β coefficients. The difference is the
+objective and the symmetry:
+
+Regression:
+- Has a dependent variable Y and independent variables X
+- Minimizes vertical distance from points to the line (residuals measured
+  parallel to Y axis)
+- Treats X and Y asymmetrically — swap them and you get a different line
+- Supervised: optimizing against a target
+
+PCA:
+- No dependent variable — finds structure within X itself
+- Minimizes perpendicular distance from points to the axis (orthogonal residuals)
+- Symmetric — no notion of which variable is the outcome
+- Unsupervised: optimizing against variance explained, not prediction error
+
+The eigenvector [1,1] in the 2x2 example above would be similar to the OLS
+regression line of M2 on M1 in a symmetric dataset — but the regression line
+shifts depending on which variable you put on each axis. The eigenvector does not.
+
+
+---
+14. IN PRACTICE — R IMPLEMENTATION
+---
+
+prcomp(curve_matrix, scale. = TRUE)
+
+Returns:
+- $rotation  — the loading matrix (eigenvectors, one column per PC)
+- $x         — the score matrix (one row per date, one column per PC)
+- $sdev      — standard deviations (square root of eigenvalues)
+
+Proportion of variance explained by each PC:
+    var_explained = prcomp_result$sdev^2 / sum(prcomp_result$sdev^2)
+
+scale. = TRUE standardizes variables to unit variance before decomposition.
+For forward curves where tenors are in the same units (price), scaling is
+optional — both approaches are defensible, but unscaled preserves the natural
+variance differences between tenors.
