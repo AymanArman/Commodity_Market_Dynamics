@@ -2,6 +2,7 @@
 title: "Junk"
 format: html
 editor: visual
+---instal
 ---
 
 ## 
@@ -10,7 +11,7 @@ editor: visual
 library(RTL)
 library(tidyverse)
 library(skimr)
-
+library(remotes)
 ```
 
 ```{r}

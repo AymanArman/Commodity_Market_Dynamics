@@ -51,24 +51,19 @@
 - `dflong` loaded once in `app_server.R` — never reloaded by child modules
 - Filtered/sliced reactives passed down as arguments
 **Commodity tickers in `dflong`**
-- `CL` — WTI Crude
-- `BRN` — Brent Crude
-- `HTT` — WTI Houston (Argus) vs. WTI Trade Month differential
-- `HO` — Heating Oil
-- `RB` — RBOB Gasoline
-- `NG` — Henry Hub Natural Gas
-- `ALI` — Aluminium
-- `EDP` — Aluminium European Premium Duty-Paid
-- `MJP` — Aluminum Japan Premium
-- `AUP` — Gold
+- `CL` — WTI Crude (36 tenors)
+- `BRN` — Brent Crude (36 tenors)
+- `NG` — Henry Hub Natural Gas (36 tenors)
+- `HO` — Heating Oil (18 tenors)
+- `RB` — RBOB Gasoline (18 tenors)
+- `HTT` — WTI Houston (Argus) vs. WTI Trade Month differential (12 tenors)
 
 **Commodity groups**
 - Infrastructure supports named groups of tickers — extensible to any grouping
-- Three group buttons, each with a distinct analytical story:
+- Two group buttons, each with a distinct analytical story:
   - **Crude** (`CL`, `BRN`, `HTT`) — WTI/Brent spread and Houston differential; crack spread story against refined products
   - **Refined Products** (`HO`, `RB`) — refinery margin story; crack spreads against crude benchmark
-  - **Aluminium** (`ALI`, `EDP`, `MJP`) — base metal + regional premiums (Europe vs Japan); regional premium spread dynamics
-- `NG` and `AUP` are standalone — no group button warranted
+- `NG` is standalone — no group button warranted
 - Group buttons anchored to specific panels that support group-level analysis
 - Clicking a group button replaces current ticker selection with the group's tickers — modal confirmation shown before applying
 - Pressing the same active group button again does nothing
@@ -164,7 +159,7 @@
 
 **User interaction**
 - User selects a ticker (e.g. CL)
-- One IRF chart rendered with all responding tickers overlaid (9 lines)
+- One IRF chart rendered with all responding tickers overlaid (5 lines)
 - X axis: days following shock, Y axis: scaled response
 - Confidence bands shown around each response path
 
@@ -194,7 +189,7 @@
 
 **Concept:** A commodity class primer — each group button loads a completely different experience with its own narrative, analytics, and layout. Shared elements are only the page container and group buttons.
 
-**Group buttons:** Crude | Refined Products | Natural Gas | Production Metals | Gold
+**Group buttons:** Crude | Refined Products | Natural Gas
 
 **Narrative:** Static, high-level, written per commodity class — not regime-aware. Explains the dominant dynamics of each market at a conceptual level.
 
@@ -217,17 +212,6 @@
 - Strong seasonal patterns in monthly returns
 - Winter premium in forward curve
 - EIA storage data if accessible (RTL `eiaStocks` dataset — to confirm if NG is included)
-
-**Production Metals** (`ALI`, `EDP`, `MJP`)
-- Regional premium spread seasonality (Europe vs Japan)
-- Industrial cycle patterns derivable from price behavior
-- EDP vs MJP spread over time
-- ⚠ Thin without external PMI data — analytics limited to price-derived patterns
-
-**Gold** (`AUP`)
-- Real rates relationship (external data available)
-- Safe-haven behavior — price spikes during geopolitical/economic stress periods
-- ⚠ Seasonal story is weak for gold — real rates is the stronger narrative here
 
 ---
 
