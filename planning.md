@@ -28,7 +28,7 @@ Derived from `brainstorm.md`. All phases must be fully planned and approved befo
 ### Chart Defaults
 - Font family: Times New Roman
 - Font size: plotly defaults unless visually off — adjust at implementation
-- All plotly charts apply `plot_bgcolor`, `paper_bgcolor`, gridline color, axis line color, and font family globally via a shared theme helper function built in Phase 0
+- All plotly charts apply `plot_bgcolor`, `paper_bgcolor`, gridline color, axis line color, and font family globally via `apply_theme()` — built in Phase 0, listed in the modules table
 
 ### Color Scales
 | Context | Scale | Status |
@@ -49,10 +49,11 @@ Derived from `brainstorm.md`. All phases must be fully planned and approved befo
 |---|---|
 | `app_server.R` | Loads `dflong` once; initialises `r` reactive; wires all analysis modules and page modules |
 | `mod_yield_curves` | Loads FRED Treasury CMT rates from static file in `inst/extdata/` at startup; writes `r$yield_curves`; reused by Hedging Analytics page Row 3 (options pricer) |
-| `mod_kalman_betas` | Pre-computes within-ticker Kalman betas (M1 vs all back tenors) for all tickers at startup; writes `r$kalman_betas` |
-| `mod_kalman_cross` | Pre-computes cross-ticker Kalman betas (M1 vs M1) for all 30 off-diagonal pairs at startup; writes `r$kalman_cross_betas` |
-| `mod_var` | Estimates weekly VAR model once at startup; writes `r$var_results`; Cholesky ordering BRN→CL→HO→RB→HTT→NG |
+| `mod_kalman_betas` | Pre-computes within-ticker Kalman betas (M1 vs all back tenors) for all tickers at startup; writes `r$kalman_betas`; output schema: long-format tibble with columns `(date, ticker, tenor, beta, r_squared)` — one row per date × ticker × tenor pair; R² consumed by Phase 5 Row 4 OLS hover tooltip and Kalman animation frames |
+| `mod_kalman_cross` | Pre-computes cross-ticker Kalman betas (M1 vs M1) for all 30 off-diagonal pairs at startup; writes `r$kalman_cross_betas`; output schema: long-format tibble with columns `(date, from_ticker, to_ticker, beta, r_squared)` — one row per date × directed pair, diagonal excluded; R² consumed by Phase 5 Row 5 hover tooltip; must consume `compute_returns` output for all tickers — ensures HTT uses level differences (ΔP) rather than log returns; do not compute raw log returns directly in this module |
+| `mod_var` | Estimates weekly VAR model once at startup; writes `r$var_results`; Cholesky ordering BRN→CL→HO→RB→HTT→NG; weekly aggregation: filter `dflong` to Friday closes (or last available trading day of each week) before computing returns — do not pass daily data |
 | `compute_returns` | Utility function (not a Shiny module); computes daily log returns per tenor from a long-format ticker tibble; automatically uses level differences (ΔP) for spread tickers with negative values (HTT); used by `mod_vol_density`, `mod_vol_heatmap`, `mod_vol_rolling`, and any other module requiring per-tenor returns |
+| `apply_theme` | Utility function (not a Shiny module); applies the global plotly theme to any plotly object — sets `plot_bgcolor`, `paper_bgcolor`, gridline color, axis line color, and font family (Times New Roman) consistently; every plotly chart in the app must be piped through this function before returning |
 
 ### Notes
 - `r` reactive initialised empty in `app_server.R`; populated lazily or at startup per module contract above
@@ -135,6 +136,7 @@ row(
 **Visualization:**
 - Single normalised chart — all selected tickers on one date, prices index-based (M1 = 100 for each ticker on the selected date) so curve shapes are directly comparable across different-priced commodities
 - Single date slider (not a range); moves through all available dates; updates chart reactively
+- **Date slider implementation (integer-mapped):** compute `available_dates` as the sorted intersection of dates present in `dflong` for all currently selected tickers; build `date_map <- data.frame(idx = seq_along(available_dates), date = available_dates)`; `sliderInput(min=1, max=nrow(date_map), value=nrow(date_map), step=1)`; selected date resolved server-side as `date_map$date[input$date_idx]`; display resolved date as a `textOutput` label adjacent to the slider; when ticker selection changes, recompute `available_dates` and fire `updateSliderInput()` to reset `max` — current value clamps automatically if it exceeds new max; do not use `sliderTextInput()` — render performance degrades on large date vectors
 - `bslib::input_switch()` toggles to **historical overlay mode**:
   - Replaces multi-ticker selector with a single-ticker selector
   - Four optional calendar date inputs (empty = not plotted); 0–4 historical curves overlaid simultaneously
@@ -165,7 +167,7 @@ row(
 - X: tenor (M01…Mn), Y: date, Z: price
 - Viridis color scale mapped to price level on the surface
 - Regime haze projected onto the floor of the 3D plot (not the surface) — floor colored by contango/backwardation regime per date, spanning all tenors
-- Regime classification smoothed via 5-day rolling majority vote to suppress flickering from short-lived switches
+- Regime classification smoothed via centered 5-day rolling majority vote (2 days either side of current date) to suppress flickering from short-lived switches — centered window chosen for retrospective accuracy, not forecasting
 - Built in plotly; ticker selector drives the surface
 - Data: `dflong` filtered to selected ticker; all tenors; all available dates
 
@@ -388,7 +390,7 @@ row(
 - col_b: STL decomposition of US weekly refinery crude inputs (demand proxy) — same treatment
 - STL parameters: `frequency = 52` (annual seasonality on weekly data), `s.window = "periodic"`
 - Both non-reactive — fixed charts
-- Data: `r$eia_crude_prod` (production, thousand bbl/day); `r$eia_crude_inputs` (refinery inputs, thousand bbl/day); both loaded from `inst/extdata/` at startup
+- Data: `r$eia_crude_prod` (production, thousand bbl/day); `r$eia_crude_inputs` (refinery inputs, thousand bbl/day); both loaded from `inst/extdata/` at startup; filter both series to Jan 2008 – Dec 2025 before passing to `stl()`
 
 ---
 
@@ -468,7 +470,7 @@ row(
 - plotly subplot with `shareX = TRUE` and date range slider:
   - Top panel: three lines — front month price (HO01 or RB01, left axis), EIA weekly stocks (right axis), 5-year average stocks (right axis)
   - Bottom panel: surplus/deficit bars — weekly stocks minus 5-year average; positive = above average (bearish), negative = below average (bullish); above average = red, below average = green
-  - 5-year average: calendar average (average stocks for each week-of-year across prior 5 years — EIA standard methodology)
+  - 5-year average: calendar average (average stocks for each week-of-year across prior 5 years — EIA standard methodology); exclude the first 5 years of data entirely — do not compute 5-year average for that window
 - Date range slider controls both panels simultaneously
 - `shinycssloaders::withSpinner()` wraps chart during initial data load
 - Reactive — selector and slider drive chart
@@ -498,7 +500,7 @@ row(
 - Static text: Natural gas demand is highly seasonal and weather-driven. Summer months are injection season — demand is low, production flows into storage in preparation for winter. Winter flips the dynamic: residential and commercial heating demand draws on those reserves, tightening supply and pushing prices higher. Cold snaps amplify this further — extreme temperatures not only spike heating demand but can cause well freeze-offs and pipeline outages, simultaneously constraining supply at the moment demand peaks. The result is that winter price spikes in natural gas can be sharp and sudden, driven as much by weather as by fundamentals.
 
 **Visualization (col width=6, centered):**
-- Seasonal overlay chart — one line per year; year range derived dynamically from available data; partial years plotted up to the most recent available week
+- Seasonal overlay chart — one line per year; constrained to Jan 2008 – Dec 2025; partial years plotted up to the most recent available week within that range
 - X-axis: Jan–Dec; Y-axis: US natural gas working underground storage (Bcf)
 - Magma color scale by year — earlier years lighter, recent years darker
 - Non-reactive — fixed chart
@@ -532,6 +534,7 @@ row(class = "mt-3",
 ---
 
 #### Row 3 — Fuel Switching (Coal-to-Gas)
+**Execution note:** This row depends on EIA-923 annual files (2008–2024) in `inst/extdata/`. If those files are not available when Phase 3 executes, stub this row and implement retroactively once data is in hand — do not block Phase 3 completion on it.
 
 **Narrative (col_b, width=4):**
 - Static text: when NG price rises, utilities in coal-heavy regions switch back to coal, softening gas demand and acting as a price cap; the cap is not a fixed number — it is geographically distributed; South and Midwest retain significant coal capacity (KY, WV, TX, IL, IN, OH); Northeast has largely retired coal so the switching mechanism is weaker; the map shows geographic distribution of coal dependency
@@ -754,53 +757,128 @@ row(
 
 ### Row 3 — Options Pricer & Zero Cost Collar
 
-**Narrative (below charts):**
-- Static text: Black-76 prices options on futures directly; the zero cost collar is constructed by finding the strike on the opposite leg where the premium exactly offsets the user's chosen leg; producer collar caps downside risk (floor from put) while selling upside (call sold funds the put); consumer collar caps cost (call bought) while giving up downside benefit (put sold funds the call); the payoff diagram makes the trade-off concrete
+**Layout:**
+```
+row(
+  col_a(width=3),   # inputs panel
+  col_b(width=9)    # charts area
+)
+```
 
-**Visualization:**
-- Inputs (left column or above):
-  - Ticker selector (CL, BRN, NG, HO, RB, HTT)
-  - Direction toggle: Producer / Consumer
-  - Implied volatility slider (user-supplied σ)
-  - Date input (range constrained to available dates in `dflong`; underlying = M1 on that date)
-  - Time to maturity: `selectInput` in whole months (1–12); T = months/12 years; displayed as stat
-  - Collar input (numeric): producer inputs floor strike (put to buy); consumer inputs cap strike (call to buy); label updates with direction toggle
-- Chart 1 — BS Pricing Curve:
-  - X: strike; Y: option premium; two curves — put + call across full strike range
-  - Horizontal line at premium of user's collar input leg; vertical dashed lines at zero cost collar strikes (both intersections)
-  - Strike range: 0–2× underlying for CL/BRN/HO/RB/HTT; 0–3× for NG; ~100 evenly spaced strikes
-- Chart 2 — Payoff Diagram:
-  - X: underlying price at expiry (same range as strike range); Y: net P&L
-  - Two lines: unhedged (linear 45°) + collar payoff (kinked — flat beyond both collar strikes)
-- Pricing: `RTL::GBSOption` with b = 0 (futures options)
-- Risk-free rate: interpolate `r$yield_curves` at selected date and T; FRED CMT tickers DGS1MO, DGS3MO, DGS6MO, DGS1, DGS2, DGS5, DGS10, DGS30; linear interpolation between adjacent tenors; FRED missing values forward-filled
+**col_a — Inputs panel (top to bottom):**
+- All inputs pre-filled with valid defaults on load; locked via `shinyjs::disable()` in view mode — user sees charts immediately
+- Ticker selector: CL (default), BRN, NG, HO, RB — HTT excluded (Black-76 invalid for spread instruments)
+- Direction toggle: Producer (default) / Consumer
+- Implied volatility slider: 0.01–1.00, step 0.01, default 0.30
+- Time to maturity (`radioButtons`): 1 month | 3 months (default) | 6 months; T = months/12 years; drives reference date constraint — rendered before reference date in UI
+- Reference date (`dateInput`): constrained to dates where the nearest futures expiry from `RTL::expiry_table` at ≥ T months out falls ≤ `last_available_date` in `dflong` for selected ticker; constraint updates reactively when T or ticker changes; default = most recent valid date given default T = 3 months; underlying = M1 on that date
+- Collar strike (numeric input): default = M1 price on reference date × 0.95; label updates with direction — producer: "Floor Strike (Put to Buy)"; consumer: "Cap Strike (Call to Buy)"
+- **Edit / Apply button:** single button that toggles between modes
+  - View mode → "Edit Inputs": click unlocks all inputs, greys out charts with "Click Apply to update" banner, disables View 2 toggle
+  - Edit mode → "Apply": click locks all inputs, re-renders charts, re-evaluates View 2 toggle constraint
+- **View 2 toggle** (`bslib::input_switch()`): sits below Edit/Apply button; disabled during edit mode and when `reference_date + T months > last_available_date`; tooltip on disabled state explains requirement
+
+**col_b — View 1 (switch off, default):**
+- Top: BS Pricing Curve
+  - X: strike (~100 evenly spaced points); Y: option premium
+  - Two curves: put (color `#4169E1`) + call (color `#db243a`) across full strike range
+  - Strike range: 0–2× M1 underlying for CL/BRN/HO/RB/HTT; 0–3× for NG
+  - Horizontal dashed line at premium of user's collar leg (color `#F87217`); vertical dashed lines at both zero-cost collar strikes (color `#F87217`)
+- Bottom: Payoff Diagram at Expiry
+  - X: underlying price at expiry (same strike range); Y: net P&L
+  - Two lines: unhedged (color `#343d46`) + collar payoff (kinked — flat beyond both collar strikes, color `#F87217`)
+  - Unhedged line: producer = `S_T − S_0`; consumer = `S_0 − S_T`; where `S_0` = M1 price on reference date
+  - Collar payoff: producer = `max(K_floor, min(K_cap, S_T)) − S_0`; consumer = `S_0 − max(K_floor, min(K_cap, S_T))`
+  - X-axis range fixed to strike grid (`[0, 2×S_0]` for CL/BRN/HO/RB; `[0, 3×S_0]` for NG); Y-axis range fixed to `[min_payoff − 0.1×S_0, max_payoff + 0.1×S_0]` computed from collar payoff endpoints — suppresses plotly auto-scaling
+
+**col_b — View 2 (switch on, replaces View 1):**
+- `expiry_date` = nearest futures contract expiry from `RTL::expiry_table` for selected ticker at ≥ T months after `reference_date`; BRN maps to `tick.prefix == "LCO"`; must be ≤ `last_available_date` in `dflong` (guaranteed by reference date constraint above)
+- Dual-axis line chart — X: date from `reference_date` to `expiry_date`
+- Left Y-axis: M1 underlying price (native units per ticker); line color `#210000`
+- Right Y-axis: collar MTM value in $; line color `#db243a`; axis label "Collar P&L ($)"
+- **Computation at each date t in `[reference_date, expiry_date]`:**
+  - `S_t` = M1 price from `dflong` on date t; if no price on exact date use prior available date
+  - `T_remaining` = `(expiry_date − t)` in years; at final date substitute intrinsic value instead of passing T=0 to BS formula
+  - `r_t` = linear interpolation of `r$yield_curves` at date t and T_remaining; forward-fill FRED missing values; FRED data downloaded to current date — stale rate propagation is not a concern
+  - σ = user-supplied (fixed throughout — isolates price movement and time decay from vol changes)
+  - Long leg value = `RTL::GBSOption(b=0, S=S_t, X=K_long, T=T_remaining, r=r_t, sigma=σ)`
+  - Short leg value = `RTL::GBSOption(b=0, S=S_t, X=K_short, T=T_remaining, r=r_t, sigma=σ)`
+  - Net collar value per option = long leg − short leg
+  - Total collar P&L = 100 × contract_multiplier × net collar value per option
+- **Contract multipliers:**
+
+| Ticker | Multiplier |
+|---|---|
+| CL | 1,000 bbl/contract |
+| BRN | 1,000 bbl/contract |
+| HO | 42,000 gal/contract |
+| RB | 42,000 gal/contract |
+| NG | 10,000 MMBtu/contract |
+| HTT | 1,000 bbl/contract (WTI-grade; uses CL multiplier) |
+
+- At `reference_date`: collar P&L = 0 by construction (zero-cost collar)
+- `shinycssloaders::withSpinner()` wraps View 2 chart output — loop over trading days involves repeated `GBSOption` calls and delay is perceptible
+
+**Pricing (both views):**
+- `RTL::GBSOption` with `b = 0` (futures options — Black-76)
+- Risk-free rate: linear interpolation of `r$yield_curves` at selected date and T; FRED CMT tickers DGS1MO, DGS3MO, DGS6MO, DGS1, DGS2, DGS5, DGS10, DGS30; forward-fill FRED missing values; FRED data downloaded to current date — stale rate propagation is not a concern
+- **Zero-cost collar strike solving:** evaluate `GBSOption` for the opposite leg across the full strike grid (~100 points, same vector used to render the pricing curve); zero-cost strike = `strike_grid[which.min(abs(opposite_premiums - user_leg_premium))]`; grid search over the existing price vector is sufficient — no root-finding required
+
+**Narrative (static text, below charts):**
+- Black-76 prices options on futures directly; the zero-cost collar is constructed by finding the strike on the opposite leg where the premium exactly offsets the chosen leg
+- Producer collar: floor from put caps downside; call sold funds the put; upside capped
+- Consumer collar: call bought caps cost; put sold funds the call; downside benefit surrendered
+- View 2 shows the mark-to-market value of the 100-contract collar position over its life — worth zero at inception by construction; evolves as the underlying moves and time decays; sigma is held constant so the path isolates commodity price behaviour and theta decay from volatility changes
 
 ---
 
 ### Row 4 — Hedge Ratio Dynamics Across the Term Structure
 
-**Narrative (bottom-left — OLS):**
-- The beta curve shows structural decay: as the tenor mismatch between physical exposure and hedge instrument grows, β declines; a 1:1 hedge of a back-month exposure with front-month futures leaves residual basis risk proportional to the gap between β and 1.0; references the Kalman chart — the OLS curve is the long-run average; the Kalman chart shows how far that relationship drifts in practice
+**Layout:**
+```
+row(                                    # shared inputs
+  col(width=6),   # ticker selector
+  col(width=6)    # animation speed selector
+)
+row(
+  col_a(width=6),   # top-left: static OLS beta curve
+  col_b(width=6)    # top-right: animated Kalman beta curve
+)
+row(
+  col_c(width=6),   # bottom-left: OLS narrative card
+  col_d(width=6)    # bottom-right: Kalman narrative card
+)
+```
 
-**Narrative (bottom-right — Kalman):**
-- At each point in history, this was the best available estimate of the hedge ratio given only data up to that date — no hindsight; the curve deforming over time reflects genuine regime shifts; references the OLS curve as a useful starting point; delta slider: low delta = slow-adapting (stays near OLS), high delta = tracks short-term dislocations but noisier; notes when the relationship breaks down (supply shocks, storage dislocations, structural shifts)
+**Shared inputs (above chart rows):**
+- Ticker selector: individual tickers only (CL, BRN, NG, HO, RB) — HTT excluded (spread instrument; log returns invalid for Kalman beta estimation)
+- Animation speed (`radioButtons`): Slow | Medium (default) | Fast; maps to `animation_opts(frame = ...)` — 1000ms / 500ms / 250ms per frame; only mutates animation playback, no data recomputation
 
-**Visualization — 2×2 grid:**
-- Inputs (shared, above both charts): ticker selector (individual tickers only) + delta slider (Kalman adaptation speed)
-- Top-left — Static OLS Beta Curve:
-  - X: tenor (M2…Mn); Y: β relative to M1; one dotted curve with interactive points
-  - Computed via `RTL::promptBeta` on full history for selected ticker
-  - Hover on point → shows R² for that tenor pair
-  - Horizontal reference line at β = 1.0
-  - Non-animated; always visible as stable reference
-- Top-right — Animated Kalman Filter Beta Curve:
-  - Same axes as OLS chart
-  - Kalman filter estimated on daily returns for each tenor pair (Mn vs M1) independently — scalar, causal
-  - Pre-computed at startup across all dates and tenors; written to `r$kalman_betas`; reused on ticker change
-  - Animated on monthly snapshots (~180 frames); play button + speed control; manual scrub available
-  - Static OLS curve shown as faint dotted reference behind the Kalman curve
-  - Date label updates each frame
-- Data: `r$kalman_betas` (pre-computed); `RTL::promptBeta` for OLS
+**col_a — Static OLS Beta Curve:**
+- X: tenor (M2…Mn); Y: β relative to M1
+- One dotted line with interactive points; horizontal reference line at β = 1.0 (color `#4169E1`)
+- Hover on each point shows R² for that tenor pair
+- Computed via `RTL::promptBeta` on full history for selected ticker; non-reactive beyond ticker change
+- Color: `#210000`
+
+**col_b — Animated Kalman Beta Curve:**
+- Same axes as OLS chart; X: tenor (M2…Mn); Y: β relative to M1
+- **Data structure for animation:** `r$kalman_betas` filtered to selected ticker; reduce to one snapshot per calendar month (last available trading day of each month); resulting data frame has columns `tenor`, `beta`, `r_squared`, `month_label`
+- **X-axis stability:** fixed to the maximum set of tenors available for the selected ticker across full history; early frames where a tenor did not yet exist render that point as NA (gap in line) — prevents the curve from appearing to grow over time as back-month contracts were introduced
+- **Plotly animation:** rendered via `plot_ly(frame = ~month_label)` + `animation_opts()` + `animation_slider()`; plotly handles play/pause button and frame scrubber natively — no custom JS required; `redraw = FALSE` in `animation_opts()` for smooth transitions between frames
+- OLS curve added as a second trace with `frame = NULL` so it remains static across all animation frames; rendered at 25% opacity, dotted line, same color as col_a OLS curve
+- Date label shown via `animation_slider(currentvalue = list(prefix = "Date: "))` — updates automatically with frame
+- Changing ticker or δ triggers a full `renderPlotly()` re-render (acceptable given pre-computation)
+
+**col_c — OLS Narrative Card (static):**
+- The beta curve shows structural decay: as the tenor mismatch between physical exposure and hedge instrument grows, β declines; a 1:1 hedge of a back-month exposure with front-month futures leaves residual basis risk proportional to the gap between β and 1.0; the OLS curve is the long-run average — use it as the baseline hedge ratio before checking how far current conditions have drifted
+
+**col_d — Kalman Narrative Card (static):**
+- At each point in history, this was the best available estimate of the hedge ratio given only data up to that date — no hindsight; the curve deforming over time reflects genuine regime shifts in the basis relationship; the relationship breaks down most visibly during supply shocks, storage dislocations, and structural shifts
+
+**Data:**
+- `r$kalman_betas`: pre-computed at startup by `mod_kalman_betas` at a fixed internal delta — not user-controllable; scalar Kalman filter on daily log returns for each within-ticker tenor pair (Mn vs M1) independently; causal (uses only data up to each date); written once, read here and in Row 5; verify at execution that `RTL::promptBeta` returns R² alongside betas — if not, compute manually from the same regression
+- `RTL::promptBeta`: OLS betas computed reactively on ticker change for col_a only
 
 ---
 
@@ -812,12 +890,12 @@ row(
 - Connects to Row 4: moving the date picker to a stress period (2008, COVID, 2022) reveals how cross-market hedge ratios shift under pressure; the Kalman filter's time-varying property, established in Row 4, is directly applied here
 
 **Visualization:**
-- Inputs: single date picker; range constrained to dates in `dflong`; defaults to most recent available date
+- Inputs: single date picker; range constrained to dates present in `r$kalman_cross_betas` (not raw `dflong` — Kalman requires at least one prior observation, so its first valid date is later than `dflong`'s first date); defaults to most recent available date
 - 6×6 reactable beta matrix:
   - Rows: exposure ticker (what you're hedging); columns: hedge instrument ticker (what you're hedging with)
   - Tickers: CL, BRN, NG, HO, RB, HTT (all M1 front month)
   - Each cell: Kalman filter β at selected date — numeric value displayed as text
-  - Cell background: color scale centered at 0; positive betas one hue, negative another; magnitude drives intensity
+  - Cell background: `RdBu` diverging scale centered at 0 — positive betas blue, negative betas red, white at zero; magnitude drives intensity; easy to swap at execution
   - Diagonal: greyed out (not a hedge relationship)
   - Hover tooltip on cell: R² for that pair at selected date
 - Pre-computed: all 30 off-diagonal pairs via scalar Kalman filter on M1 daily returns; written to `r$kalman_cross_betas` at startup
