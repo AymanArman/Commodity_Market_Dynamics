@@ -1,0 +1,36 @@
+Package: CommodityMarketDynamics
+Title: Commodity Market Dynamics — Interactive Primer
+Version: 0.0.0.9000
+Authors@R:
+    person("Ayman", "Arman", email = "ayman@example.com", role = c("aut", "cre"))
+Description: An interactive Golem/bslib app covering forward curve behaviour,
+    volatility, market dynamics, cross-market relationships, and hedging
+    analytics across energy commodity futures.
+License: MIT
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.1.1
+Imports:
+    config (>= 0.3.1),
+    golem (>= 0.4.0),
+    shiny (>= 1.7.0),
+    bslib (>= 0.6.0),
+    plotly (>= 4.10.0),
+    dplyr (>= 1.1.0),
+    tidyr (>= 1.3.0),
+    purrr (>= 1.0.0),
+    lubridate (>= 1.9.0),
+    readxl (>= 1.4.0),
+    tidyquant (>= 1.0.0),
+    vars (>= 1.5.0),
+    zoo (>= 1.8.0),
+    RTL,
+    htmltools (>= 0.5.0),
+    shinycssloaders (>= 1.0.0),
+    shinyjs (>= 2.1.0),
+    shinyWidgets (>= 0.7.0),
+    reactable (>= 0.4.0),
+    viridisLite (>= 0.4.0)
+Suggests:
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3

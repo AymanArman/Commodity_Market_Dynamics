@@ -1,0 +1,11 @@
+.git
+mvp/
+*.Rproj
+.Rproj.user/
+brainstorm.md
+planning.md
+todo.md
+testing_plan.md
+check_packages.R
+final_app/inst/
+final_app/CommodityMarketDynamics/tests/

@@ -4,11 +4,11 @@ description: Code-breaking issues deferred to execution — must be caught and f
 type: project
 ---
 
-These items were identified in the pre-execution audit and explicitly deferred to testing. At the start of each phase, verify the relevant items before proceeding.
+These items were the original pre-execution audit risks. A full test suite now lives in `testing_plan.md` — read that file at the start of each phase. These 11 items are absorbed into the relevant phase sections of `testing_plan.md` and are not a separate checklist.
 
 **Why:** User confirmed these do not require planning changes — they are implementation-level issues caught by smoke tests and module-level tests.
 
-**How to apply:** Flag these during phase execution. Do not skip them. Each one will cause silent failures or crashes if not addressed.
+**How to apply:** Use `testing_plan.md` as the authoritative test reference during execution. These items are kept here only for cross-reference.
 
 ---
 

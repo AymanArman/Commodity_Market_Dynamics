@@ -105,9 +105,22 @@
 
 ## Memory & Project Files
 
-- At the start of every session, read `planning.md` before doing anything else — treat its contents as locked decisions unless the user explicitly reopens them
 - Locked decisions live in `planning.md` — do not duplicate them in memory files
 - Memory captures only what cannot be derived from project files: user preferences, feedback, and project context
+
+---
+
+## Session Startup — Token Efficiency (CRITICAL)
+
+`planning.md` is 18,000+ tokens. Reading it in full at session start burns ~6% of the usage limit before any work begins. Do not do this.
+
+**Session startup protocol:**
+1. MEMORY.md is auto-loaded — use it for orientation. Do not re-read project files speculatively.
+2. Wait for the user to say which phase and module to work on.
+3. Read only the relevant section of `planning.md` for that module using `offset`/`limit` parameters.
+4. Read `todo.md` and `testing_plan.md` the same way — targeted reads only, never in full.
+5. Read source files only when you are about to write or edit them.
+6. Run smoke tests at the start of a phase, not at session start unless specifically needed.
 
 ---
 

@@ -557,17 +557,58 @@ row(class = "mt-3",
   - Uses same state-level data from `r$eia923_coal` — no additional data calls
 
 - Data loading: lazy load on first NG group click; write to `r$eia923_coal`; `shinycssloaders::withSpinner()` during load
-- Data sources: NG price from `dflong`; coal generation from EIA-923 annual files in `inst/extdata/` — one `.xlsx` file per year (2008–2025); `mod_md_eia923` reads and binds all annual files at load time
-- EIA-923 file structure: sheet = `Page 1 Generation and Fuel Data`; skip 5 rows; col 7 = `Plant State`; col 8 = `Census Region` (10 division codes); col 15 = `Reported Fuel Type Code`; cols 80–91 = `Netgen January` through `Netgen December` (MWh); col 97 = `YEAR`
-- Coal fuel type filter: `Reported Fuel Type Code %in% c("ANT", "BIT", "LIG", "RC", "SUB", "WC")`
+- Data sources: NG price from `dflong`; coal generation from EIA-923 annual files in `inst/extdata/` — all 18 annual files (2008–2025) confirmed present; `mod_md_eia923` reads and binds all annual files at load time via a shared helper function
+
+**EIA-923 file structure (verified against actual files):**
+- Sheet: `Page 1 Generation and Fuel Data` — consistent across all years
+- Skip rows: **`skip = 6` for 2008–2010; `skip = 5` for 2011–2025** — the three earliest files have an extra header row; using the wrong skip produces blank column names
+- File extensions: `.xls`/`.XLS` for 2008–2010; `.xlsx` for 2011–2025 — `readxl::read_excel()` handles both without switching functions
+- Column positions are **identical across all years** once the correct skip is applied; use positional access only — column names vary across years (e.g. `NETGEN_JAN` vs `Netgen_Jan` vs `Netgen\nJanuary`) and must not be relied upon:
+  - Col 7 = Plant State
+  - Col 8 = Census Region (10 division codes)
+  - Col 15 = Reported Fuel Type Code
+  - Cols 80–91 = Netgen January through Netgen December (MWh)
+  - Col 97 = Year
+- Read with `col_types = "text"` to prevent type coercion failures on mixed columns; convert Netgen cols to numeric after read; `"."` values in Netgen columns are missing data — treat as NA, do not coerce to 0
+
+**Loading helper (`read_eia923_file`)** — single function used by `mod_md_eia923`:
+```r
+# Reads one EIA-923 annual file and returns a tidy tibble with standardised column names.
+# Handles skip differences between 2008-2010 (skip=6) and 2011+ (skip=5).
+# col_types="text" avoids coercion failures on mixed-format columns.
+# Example: read_eia923_file("inst/extdata/EIA923_Schedules_2_3_4_5_M_12_2020_Final_Revision.xlsx")
+read_eia923_file <- function(path) {
+  yr <- as.integer(stringr::str_extract(basename(path), "\\d{4}"))
+  sk <- if (yr <= 2010) 6L else 5L
+  df <- readxl::read_excel(path,
+                            sheet = "Page 1 Generation and Fuel Data",
+                            skip = sk,
+                            col_types = "text")
+  df <- df[, c(7, 8, 15, 80:91, 97)]
+  names(df) <- c("plant_state", "census_region", "fuel_type_code",
+                 "netgen_jan", "netgen_feb", "netgen_mar", "netgen_apr",
+                 "netgen_may", "netgen_jun", "netgen_jul", "netgen_aug",
+                 "netgen_sep", "netgen_oct", "netgen_nov", "netgen_dec", "year")
+  # Convert Netgen cols to numeric; "." = NA (EIA missing data marker)
+  netgen_cols <- paste0("netgen_", c("jan","feb","mar","apr","may","jun",
+                                     "jul","aug","sep","oct","nov","dec"))
+  df[netgen_cols] <- lapply(df[netgen_cols], function(x) {
+    x[x == "."] <- NA
+    as.numeric(x)
+  })
+  df$year <- as.integer(df$year)
+  df
+}
+```
+
+- Coal fuel type filter: `fuel_type_code %in% c("ANT", "BIT", "LIG", "RC", "SUB", "WC")`
 - Census division → region mapping (hardcoded in module):
   - Northeast: NEW, MAT
   - Midwest: ENC, WNC
   - South: SAT, ESC, WSC
   - West: MTN, PACC, PACN
-- Aggregation: filter to coal types → pivot `Netgen` cols to long (month, MWh) → group by Census Region + year-month (View 1) or Plant State + year-month (View 2) → sum MWh
+- Aggregation: filter to coal types → pivot `netgen_*` cols to long (month, MWh) → group by Census Region + year-month (View 1) or Plant State + year-month (View 2) → sum MWh, removing NAs
 - Units: MWh throughout
-- Currently only 2025 file in `inst/extdata/`; remaining annual files (2008–2024) to be downloaded from EIA and added before Phase 3 execution
 
 ---
 

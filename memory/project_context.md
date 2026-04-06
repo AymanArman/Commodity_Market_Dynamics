@@ -14,9 +14,13 @@ Graded on accuracy, quality, readability, usability, and creativity on an absolu
 
 ---
 
-## Current Phase: Planning complete — ready for execution
+## Current Phase: Ready to begin Phase 0 execution
 
-`planning.md` is fully locked across all 5 phases (Phase 0–5). Next step is creating `todo.md` and beginning Phase 0 execution.
+`planning.md` fully locked. `todo.md` and `testing_plan.md` both created as of 2026-04-05. Next session begins Phase 0 execution.
+
+**Execution files:**
+- `todo.md` — sequential implementation checklist, one phase at a time; each phase ends with test run + visual review + commit
+- `testing_plan.md` — full test suite (~100 tests across 6 phases); unit, integration, visual, and smoke tests; organized by phase to match execution order
 
 **Phases:**
 - Phase 0: Scaffold & Shared Infrastructure
