@@ -227,23 +227,22 @@ mod_hedge_options_ui <- function(id) {
         bslib::card(
           bslib::card_body(
             shiny::p(
-              "Black-76 prices options on futures directly (cost-of-carry ",
-              shiny::em("b"), " = 0). The zero-cost collar is constructed by ",
-              "finding the strike on the opposite leg where the premium exactly ",
-              "offsets the chosen leg — solved via grid search over the full ",
-              "strike range."
+              "A zero-cost collar pairs two options legs so that the premium on ",
+              "the sold leg exactly offsets the cost of the bought leg — the ",
+              "strike on the opposite leg is solved to achieve this."
             ),
             shiny::p(
-              "Producer collar: floor from put caps downside; call sold funds the put; ",
-              "upside capped. Consumer collar: call bought caps cost; put sold funds ",
-              "the call; downside benefit surrendered."
+              shiny::strong("Producer collar:"),
+              " put purchased to floor downside; call sold to fund the put; upside capped."
             ),
             shiny::p(
-              "View 2 shows the mark-to-market value of a 100-contract collar ",
-              "position over its life — worth zero at inception by construction; ",
-              "evolves as the underlying moves and time decays. Sigma is held ",
-              "constant so the path isolates commodity price behaviour and theta ",
-              "decay from volatility changes."
+              shiny::strong("Consumer collar:"),
+              " call purchased to cap cost; put sold to fund the call; downside benefit surrendered."
+            ),
+            shiny::p(
+              "View 2 shows the mark-to-market value of a single collar ",
+              "over its life — worth zero at inception by construction; ",
+              "evolves as the underlying moves and time decays."
             )
           )
         )

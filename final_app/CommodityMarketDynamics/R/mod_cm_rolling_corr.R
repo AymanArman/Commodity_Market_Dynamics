@@ -19,6 +19,7 @@ mod_cm_rolling_corr_ui <- function(id) {
   tagList(
     # Controls row: two-ticker selector + rolling window slider
     shiny::fluidRow(
+      style = "border-bottom: none; margin-bottom: 0; padding-bottom: 0;",
       shiny::column(
         width = 4,
         shinyWidgets::pickerInput(
@@ -67,7 +68,7 @@ mod_cm_rolling_corr_ui <- function(id) {
               "inside high-vol windows than outside, the relationship strengthens ",
               "or breaks down under stress. This has direct implications for ",
               "diversification and cross-market hedges: a hedge that holds during ",
-              "calm periods may fail precisely when it is most needed."
+              "calm periods may fail precisely when it is most needed. (See CL vs. HO.)"
             )
           )
         )

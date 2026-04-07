@@ -120,52 +120,31 @@ All 174 tests pass (48 Phase 3 tests, 126 prior phases). Signed off 2026-04-06.
 
 ---
 
-## Phase 5 — Hedging Analytics Page
+## Phase 5 — Hedging Analytics Page ✅ COMPLETE
 
-**Smoke:** run Phase 0–4 tests before writing any Phase 5 code.
+All 292 tests pass (221 prior + 71 new). Visual review complete. Signed off 2026-04-06.
 
-### `mod_hedge_swap` — Row 1
-
-- [ ] Build instrument selector (CL, BRN, NG, HO, RB, HTT, BRN−CL spread, HO×42−RB×42 spread); reference `dateInput` defaulting to most recent available date for selected instrument; constrain range to available dates in `dflong` for that instrument
-- [ ] Generate valid delivery periods: filter `dflong` to selected instrument on reference date; map tenors to delivery months via `RTL::expiry_table`; build Bal[year] and Cal[year+1..year+3] candidates; drop any period missing any delivery month in the forward curve on that date; populate `selectInput` reactively
-- [ ] Direction toggle (Producer / Consumer)
-- [ ] Price swap via `RTL::swapCOM`; apply ×42 conversion for HO and RB before pricing; compute CMA of spread directly for spread instruments
-- [ ] Render plotly chart (col_a, width=6): monthly forward curve line (`#210000`) + horizontal flat swap line (`#F87217`) + shaded area between (producer: above = green, below = red; consumer: reversed) at 25% opacity; `apply_theme()`
-- [ ] Stat card in col_b showing flat swap price; narrative card below stat; layout col_a (width=6), col_b (width=6)
-
-### `mod_hedge_roll` — Row 2
-
-- [ ] Build ticker selector (CL, BRN, NG, HO, RB, HTT); reference date picker constrained to dates ≥1 year before last available date for selected ticker; direction toggle (Producer / Consumer)
-- [ ] Implement roll logic: entry roll 1 = M1 price on reference date; exit = M1 price on expiry date from `RTL::expiry_table` (BRN → `tick.prefix == "LCO"`, HTT → `tick.prefix == "CL"`); if no price on exact expiry date use prior available business day; cascade: exit N = entry N+1; generate up to 12 rolls; gracefully handle fewer than 12 rolls available
-- [ ] Compute Roll Yield % = `(Entry − Exit) / Entry × 100`; Producer P&L = `Entry − Exit`; Consumer P&L = `Exit − Entry`; Cumulative P&L = running sum
-- [ ] Render `reactable` table with 12 columns (one per roll); conditional cell coloring: green = gain, red = loss for selected direction; unit label in table header ($/bbl, $/MMBtu, $/gal per ticker)
-- [ ] Layout: col_a (width=6) narrative, col_b (width=6) table
-
-### `mod_hedge_options` — Row 3
-
-- [ ] Build inputs panel (col_a, width=3): ticker selector (CL, BRN, NG, HO, RB — HTT excluded); direction toggle; implied vol slider (0.01–1.00, step 0.01, default 0.30); TTM `radioButtons` (1 / 3 / 6 months); reference `dateInput` constrained reactively to dates where nearest futures expiry at ≥ T months out is ≤ `last_available_date` in `dflong`; collar strike `numericInput` defaulting to M1 price × 0.95; Edit/Apply toggle button; View 2 `bslib::input_switch()` below button
-- [ ] Lock all inputs on load via `shinyjs::disable()`; Edit mode unlocks inputs and greys charts with "Click Apply to update" banner; Apply re-locks and re-renders; disable View 2 toggle during edit mode and when `reference_date + T > last_available_date`
-- [ ] **View 1 — BS Pricing Curve** (col_b, default): build strike grid (~100 points, 0–2× M1 for CL/BRN/HO/RB/HTT; 0–3× for NG); compute call (`#db243a`) and put (`#4169E1`) premiums via `RTL::GBSOption(b=0)` across full grid; horizontal dashed line at user's collar leg premium (`#F87217`); vertical dashed lines at both zero-cost collar strikes; `apply_theme()`
-- [ ] **View 1 — Payoff Diagram at Expiry**: build payoff curves — unhedged (`#343d46`) and collar (`#F87217`); fixed X-axis range (0–2×S0 or 0–3×S0); fixed Y-axis range from collar payoff endpoints; `apply_theme()`
-- [ ] **Zero-cost collar grid search**: evaluate `GBSOption` for the opposite leg across the existing strike grid; zero-cost strike = `strike_grid[which.min(abs(opposite_premiums - user_leg_premium))]`
-- [ ] **View 2 — Collar MTM over life**: find `expiry_date` = nearest futures expiry ≥ T months after reference date (BRN → LCO prefix); loop over trading days from reference date to expiry date; for each date compute `S_t` from `dflong`, `T_remaining`, `r_t` via linear interpolation of `r$yield_curves` at that date and tenor; compute long and short leg values via `GBSOption(b=0)`; net collar P&L = 100 × multiplier × (long − short); at reference date P&L = 0 by construction; render dual-axis plotly chart (underlying price left, collar P&L right); `shinycssloaders::withSpinner()`; `apply_theme()`
-- [ ] Narrative card (static text) below charts
-
-### `mod_hedge_term` — Row 4
-
-- [ ] Shared inputs row: ticker selector (CL, BRN, NG, HO, RB — HTT excluded); animation speed `radioButtons` (Slow=1000ms / Medium=500ms / Fast=250ms)
-- [ ] **col_a — Static OLS beta curve**: call `RTL::promptBeta` on full history for selected ticker; render dotted line with interactive points (X = tenor M2…Mn, Y = β vs M1, color `#210000`); horizontal reference line at β=1.0 color `#4169E1`; hover shows R² for that tenor pair; non-reactive beyond ticker change
-- [ ] **col_b — Animated Kalman beta curve**: filter `r$kalman_betas` to selected ticker; reduce to one snapshot per calendar month (last available trading day); fix X-axis to the maximum set of tenors across full history for that ticker; early frames where a tenor did not yet exist render as NA gap; build `plot_ly(frame = ~month_label)` with `animation_opts(frame = speed_ms, redraw = FALSE)` and `animation_slider(currentvalue = list(prefix = "Date: "))`; add OLS curve as second trace with `frame = NULL` at 25% opacity
-- [ ] col_c (OLS narrative) and col_d (Kalman narrative) static cards below respective charts
-
-### `mod_hedge_cross` — Row 5
-
-- [ ] Single date picker; constrain range to dates present in `r$kalman_cross_betas`; default = most recent available date
-- [ ] Slice `r$kalman_cross_betas` at selected date; pivot to 6×6 matrix (rows = exposure ticker, cols = hedge instrument ticker)
-- [ ] Render via `reactable`: diagonal cells greyed out; off-diagonal cell background via `RdBu` diverging scale centered at 0; positive = blue, negative = red; magnitude drives intensity; hover tooltip shows R² for that pair at selected date
-- [ ] Narrative card below table
+All 5 modules built and deployed: mod_hedge_swap, mod_hedge_roll, mod_hedge_options, mod_hedge_term, mod_hedge_cross.
 
 ### Phase 5 Tests & Review
-- [ ] Run all Phase 5 tests from `testing_plan.md` (tests 5.1–5.46)
-- [ ] User visual review: swap pricer shading directions; rolling hedge table P&L colors; options pricer View 1 and View 2; Kalman animation playback; cross-market matrix diagonal greyed; sign off
-- [ ] Commit
+- [x] Run all Phase 5 tests from `testing_plan.md` (tests 5.1–5.46) — 71 pass, 1 skip (expected), 0 fail
+- [x] User visual review: all rows render correctly; signed off
+- [ ] Commit (pending final narrative revisions)
+
+---
+
+## Deployment ✅ COMPLETE
+
+- [x] Dockerfile written (`rocker/r-ver:4.4.2` base; all CRAN deps via pak; package installed from source)
+- [x] `.github/workflows/docker.yml` — triggers on push to main; builds and pushes to `aymanarman/commodity-market-dynamics` on DockerHub
+- [x] Tested locally on Docker Desktop — app loads at localhost:3838, all charts render
+- [x] FRED yield curve fetch wrapped in tryCatch; 5% fallback rate used when FRED unreachable in container
+
+---
+
+## Remaining Work — Narrative Revisions Only
+
+Light text edits to narrative cards across the app. No code changes, no dependency changes, no tests needed.
+
+- [x] Forward Curve Row 2 (3D surface): added "Notice" paragraph on contango/backwardation and mean reversion
+- [ ] Additional narrative changes per user direction

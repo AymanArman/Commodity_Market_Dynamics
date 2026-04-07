@@ -23,6 +23,7 @@ mod_md_ng_ui <- function(id) {
   tagList(
     # ── Row 1 — Storage Seasonality ─────────────────────────────────────────
     shiny::fluidRow(
+      style = "border-bottom: none; margin-bottom: 0; padding-bottom: 0;",
       shiny::column(width = 3),
       shiny::column(
         width = 6,

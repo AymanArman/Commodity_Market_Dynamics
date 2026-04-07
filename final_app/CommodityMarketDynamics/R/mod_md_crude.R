@@ -109,9 +109,20 @@ mod_md_crude_ui <- function(id) {
               international markets \u2014 export arbitrage opens. Crude flows from Cushing toward
               Houston, showing up as Cushing inventory draws."),
             shiny::p("Storage is the real-time supply/demand balance. Production is sticky;
-              storage is where the signal surfaces first. Draws larger than expected push prices
-              up; builds push prices down. The weekly EIA inventory report is the primary data
-              release traders watch to gauge this balance.")
+              storage is where the signal surfaces first. For the spread specifically, the
+              relationship runs opposite to raw price intuition: builds widen the Brent\u2212WTI
+              spread as WTI weakens under storage pressure, while draws compress it as Cushing
+              tightens and WTI recovers relative to Brent. The weekly EIA inventory report is
+              the primary data release traders watch to gauge this balance."),
+            shiny::p(shiny::strong("COVID SPIKE:"),
+              "Brent, as a seaborne benchmark, retains export optionality during market-moving
+              events \u2014 a cargo can be redirected or stored on tankers, creating an effective
+              price floor that WTI does not have. WTI, priced at landlocked Cushing, has no
+              such outlet. Large inventory builds in early 2020, driven by collapsing refinery
+              demand and sustained shale production, left crude with nowhere to go. Cushing
+              storage pressure discounted WTI aggressively relative to Brent, widening the
+              spread sharply \u2014 a dynamic that culminated in the April 2020 negative price
+              event.")
           )
         )
       )
@@ -160,6 +171,7 @@ mod_md_crude_ui <- function(id) {
 
     # ── Row 4 — STL Decomposition ────────────────────────────────────────────
     shiny::fluidRow(
+      style = "border-bottom: none; margin-bottom: 0; padding-bottom: 0;",
       shiny::column(
         width = 6,
         shiny::tags$h6("US Crude Production \u2014 STL Decomposition",

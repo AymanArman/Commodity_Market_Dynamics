@@ -108,6 +108,16 @@ mod_fc_surface_ui <- function(id) {
              tightness or a demand spike pulling near-term prices above longer-dated
              expectations). Regime is smoothed with a 5-day centered rolling
              majority vote to suppress one-day classification flickers."
+          ),
+          shiny::p(shiny::strong("Notice:"),
+            "Forward curves tend to enter contango during periods of oversupply
+             or weak demand — visible on the surface as lower price levels — while
+             backwardation typically occurs when supply is tight and prices are
+             elevated, appearing as peaks on the surface. This reflects a deeper
+             property of energy markets: commodities such as crude oil and natural
+             gas are fundamentally mean-reverting. Absent structural shifts in
+             infrastructure, production technology, or consumption efficiency,
+             prices are anchored by a long-run supply/demand equilibrium."
           )
         )
       )

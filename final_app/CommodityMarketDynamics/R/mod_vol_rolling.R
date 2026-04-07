@@ -25,31 +25,10 @@ mod_vol_rolling_ui <- function(id) {
   ns <- shiny::NS(id)
 
   tagList(
-    # Controls: ticker + tenor selectors
+    # Row 1 — narrative card, centered; border-bottom suppressed so no divider before chart row
     shiny::fluidRow(
-      shiny::column(
-        width = 3,
-        shinyWidgets::pickerInput(
-          inputId  = ns("ticker"),
-          label    = "Commodity",
-          choices  = c("CL", "BRN", "NG", "HO", "RB", "HTT"),
-          selected = "CL",
-          multiple = FALSE
-        )
-      ),
-      shiny::column(
-        width = 3,
-        shiny::selectInput(
-          inputId  = ns("tenor"),
-          label    = "Tenor",
-          choices  = paste0("M", sprintf("%02d", 1:36)),
-          selected = "M01"
-        )
-      )
-    ),
-    # Chart row
-    shiny::fluidRow(
-      # col_a — narrative card
+      style = "border-bottom: none; margin-bottom: 0; padding-bottom: 0;",
+      shiny::column(width = 3),
       shiny::column(
         width = 6,
         bslib::card(
@@ -73,11 +52,31 @@ mod_vol_rolling_ui <- function(id) {
           )
         )
       ),
-      # col_b — rolling vol chart
+      shiny::column(width = 3)
+    ),
+    # Row 2 — inputs in left buffer, chart centered
+    shiny::fluidRow(
+      shiny::column(
+        width = 3,
+        shinyWidgets::pickerInput(
+          inputId  = ns("ticker"),
+          label    = "Commodity",
+          choices  = c("CL", "BRN", "NG", "HO", "RB", "HTT"),
+          selected = "CL",
+          multiple = FALSE
+        ),
+        shiny::selectInput(
+          inputId  = ns("tenor"),
+          label    = "Tenor",
+          choices  = paste0("M", sprintf("%02d", 1:36)),
+          selected = "M01"
+        )
+      ),
       shiny::column(
         width = 6,
         plotly::plotlyOutput(ns("roll_chart"), height = "450px")
-      )
+      ),
+      shiny::column(width = 3)
     )
   )
 }

@@ -30,23 +30,20 @@ mod_vol_heatmap_ui <- function(id) {
             multiple = FALSE
           ),
           shiny::p(
-            "High correlation between front tenors reflects parallel shifts ",
-            "dominating the curve; correlation decay toward the back indicates ",
-            "slope and curvature dynamics emerging — the covariance structure ",
-            "that PCA decomposes on the Forward Curves page."
-          ),
-          shiny::p(
             "Seasonality is visible in the matrix for NG and RB — tenors that ",
             "span different demand seasons (e.g. summer vs. winter) decorrelate ",
             "from each other, reflecting structurally different price drivers ",
             "across the curve."
           ),
           shiny::p(
-            "HTT shows a particularly sharp front vs. back month decorrelation ",
-            "— front tenors are driven by real-time pipeline and storage dynamics ",
-            "at Cushing, while back tenors are anchored by longer-term structural ",
-            "expectations; the two ends of the curve respond to different ",
-            "information sets."
+            "HTT is the most structurally segmented curve in the dataset. The ",
+            "front month moves largely on its own — driven by real-time pipeline ",
+            "congestion, Cushing inventory, and prompt storage arbitrage — and ",
+            "decorrelates sharply from the rest of the curve. Beyond M01, the ",
+            "back end coheres as a bloc anchored by longer-run structural ",
+            "expectations. Reference the PC2 and PC3 loadings on the Forward ",
+            "Curves page to see how these segments shift together and understand ",
+            "their relationship with the correlation structure shown here."
           ),
           shiny::p(
             "Crude (CL, BRN) tends to show a matrix that is predominantly one ",

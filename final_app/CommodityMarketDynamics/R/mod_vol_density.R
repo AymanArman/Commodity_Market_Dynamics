@@ -19,6 +19,7 @@ mod_vol_density_ui <- function(id) {
   tagList(
     # Controls: ticker selector + tenor range slider
     shiny::fluidRow(
+      style = "border-bottom: none; margin-bottom: 0; padding-bottom: 0;",
       shiny::column(
         width = 3,
         shinyWidgets::pickerInput(
